@@ -1,0 +1,101 @@
+<html>
+  <head>
+    <script src="https://apis.google.com/js/client.js"></script>
+    <script type="text/javascript"
+      src="http://maps.googleapis.com/maps/api/js?key=AIzaSyAezzF7SxOKnfz9-iQIXp6OGu7UBBJyWqk&sensor=false">
+    </script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js"></script>
+    <script>
+      // User Submitted Variables
+      // var project_id = '7447235219';
+      // var client_id = '7447235219.apps.googleusercontent.com';
+
+      // var config = {
+      //   'client_id': client_id,
+      //   'scope': 'https://www.googleapis.com/auth/bigquery'
+      // };
+
+      function createMarker(lat,lng,value,icon) {
+        var myLatlng = new google.maps.LatLng(lat,lng);
+        var marker = new google.maps.Marker({
+            position: myLatlng,
+            map: map,
+            title: value,
+            icon: icon
+          });
+          return marker;
+      }
+
+      function query() {
+       var sql = prompt("Query?");
+       var request = gapi.client.bigquery.jobs.query({
+          'projectId': project_id,
+          'timeoutMs': '30000',
+          'query': sql
+        });
+        request.execute(function(response) {     
+            console.log(response);
+            // $('#map').html(JSON.stringify(response.result.rows, null));
+            // var total = 0;
+            // $(response.rows).each(function(i,value){
+            //   total = Number(total) + Number(value.f[2].v);
+            // });
+            $(response.rows).each(function(i,value){
+              // var percentage = value.f[2].v / total;
+              var icon = new google.maps.MarkerImage("http://cdn1.iconfinder.com/data/icons/dot/256/man_person_mens_room.png", null, null, null, new google.maps.Size(50*value.f[2].v,50*value.f[2].v));
+              createMarker(value.f[0].v,value.f[1].v,value.f[2].v,icon);
+            });
+        });
+      }
+
+      function auth() {
+        gapi.auth.authorize(config, function() {
+            gapi.client.load('bigquery', 'v2');
+            $('#client').html('BigQuery client initiated');
+            $('#query_button').fadeIn();
+        });
+        var mapOptions = {
+          center: new google.maps.LatLng(-33.4348476, -70.6157308),
+          zoom: 10,
+          mapTypeId: google.maps.MapTypeId.ROADMAP
+        };
+        map = new google.maps.Map(document.getElementById("map"),mapOptions);
+      }
+
+      function init() {
+        var config = JSON.parse(localStorage.getItem("config"));
+        if (!config) {
+          window.client_id = prompt("Client id?");
+          window.project_id = prompt("Project id?");
+          window.config = {
+            'client_id': client_id,
+            'scope': 'https://www.googleapis.com/auth/bigquery'
+          };
+          localStorage.setItem("config",JSON.stringify({client_id: client_id, project_id: project_id}));
+        } else {
+          window.client_id = config.client_id;
+          window.project_id = config.project_id;
+          window.config = {
+            'client_id': client_id,
+            'scope': 'https://www.googleapis.com/auth/bigquery'
+          };
+        }
+      }
+      init();
+    </script>
+  </head>
+
+  <body>
+    <h2>bigcueri.</h2>
+    <p>QUERY MUST RETURN [LAT,LNG,VALUE]</p>
+    <h3>Example query for chilean census</h3>
+    <p>select location.lat, location.lng,ratio*100 from (
+select COUNT(*) c,ratio_to_report(c) over(PARTITION BY p23b) ratio, p23b,  (P29 IN (5,3) AND P26A IN (13,14,15)) is_jobless
+FROM [data-sensing-lab:hoffa.persona] persona 
+group by p23b ,is_jobless) data JOIN [data-sensing-lab:hoffa.location] location ON location.location_id = data.p23b  where is_jobless</p>
+    <button id="auth_button" onclick="auth();">Auth</button>
+    <div id="client"></div>
+    <button id="query_button" style="display:none;" onclick="query();">query</button>
+    <div id="map" style="width:800px;height:700px"></div>
+  </body>
+</html>
